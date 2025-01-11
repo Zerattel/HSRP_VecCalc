@@ -455,18 +455,16 @@ let toggleStates = {}; // Object to store toggle states
   alert(`Информация о цели отправлена:\nID: ${targetInfo.id}\nDistance: ${targetInfo.distance} m\nRelative Speed: ${targetInfo.relativeSpeed} m/s\nAngular Velocity: ${targetInfo.angularVelocity}°/s\nDirection: ${targetInfo.direction}°`);
 
   fetch('https://script.google.com/macros/s/AKfycbxkj_vtMZj7yVUFZmMMpDyyGGibEUL9EIRMyguVGdEsNN4Acv-sWUtxSEjsFTST31j9/exec', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(targetInfo),
-  })
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(targetInfo),
+  mode: 'no-cors'  // Используем no-cors для обхода CORS
+})
   .then(response => {
-    if (!response.ok) {
-      throw new Error('Ошибка в ответе от сервера: ' + response.status);
-    }
-    return response.text();
+    console.log('Ответ от Apps Script:', response);
   })
-  .then(data => console.log('Ответ от Apps Script:', data))
   .catch(error => console.error('Ошибка при отправке данных:', error));
+
 }
 
 
