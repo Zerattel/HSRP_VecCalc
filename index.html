@@ -73,6 +73,10 @@
       <button onclick="deleteSelectedBody()">Delete</button>
       <button onclick="launchSubBody()">Launch Subbody</button>
     </div>
+    <div id="saveLoadButtons">
+      <button onclick="saveBattlefield()">Save</button>
+      <button onclick="loadBattlefield()">Load</button>
+    </div>
   </div>
 
   <div id="coordinateField">
@@ -507,6 +511,57 @@ let toggleStates = {}; // Object to store toggle states
       // Redraw the bodies
       moveBodies();
     }
+
+    function saveBattlefield() {
+  const saveData = {
+    bodies: bodies,
+    fieldSize: fieldSize,
+    scale: scale
+  };
+  const data = JSON.stringify(saveData);
+  const blob = new Blob([data], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'battlefield_save.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function loadBattlefield() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const saveData = JSON.parse(e.target.result);
+        bodies = saveData.bodies;
+        fieldSize = saveData.fieldSize;
+        scale = saveData.scale;
+        
+        // Update canvas size based on loaded scale
+        canvasWidth = 1280 * scale;
+        canvasHeight = 720 * scale;
+        const canvas = document.getElementById('myCanvas');
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+
+        moveBodies(); // Redraw the battlefield
+        console.log('Battlefield loaded successfully');
+      } catch (error) {
+        console.error('Error parsing the file:', error);
+        alert('Error loading the file. Please make sure it\'s a valid battlefield save file.');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
   </script>
 </body>
 </html>
