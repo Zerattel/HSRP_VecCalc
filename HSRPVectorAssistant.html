@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>HSRP Vector Assistant</title>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: 'Exo 2', sans-serif;
+    }
+
+    #coordinateField {
+      width: 70%;
+      float: right;
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+
+    /* Add the same style for other elements as needed */
+
+  </style>
+</head>
+<body>
+  <h1>HSRP Vector Assistant</h1>
+
+  <div id="field">
+    <h2>.</h2>
+    <button onclick="createBody()">Create Body</button>
+    <br>
+    <label for="bodyId">Body ID:</label>
+    <input type="text" id="bodyId">
+    <br>
+    <label for="xCoord">X Coordinate (m):</label>
+    <input type="text" id="xCoord">
+    <br>
+    <label for="yCoord">Y Coordinate (m):</label>
+    <input type="text" id="yCoord">
+    <br>
+    <label for="course">Course (degrees):</label>
+    <input type="text" id="course">
+    <br>
+    <label for="speed">Speed (m/s):</label>
+    <input type="text" id="speed">
+    <br>
+    <label for="color">Color:</label>
+    <select id="color">
+      <option value="red">Red</option>
+      <option value="blue">Blue</option>
+      <option value="green">Green</option>
+      <option value="yellow">Yellow</option>
+      <option value="orange">Orange</option>
+      <option value="purple">Purple</option>
+      <option value="pink">Pink</option>
+      <option value="cyan">Cyan</option>
+      <option value="brown">Brown</option>
+      <option value="black">Black</option>
+      <option value="white">White</option>
+      <option value="grey">Grey</option>
+      <option value="lime">Lime</option>
+      <option value="magenta">Magenta</option>
+      <option value="teal">Teal</option>
+      <option value="navy">Navy</option>
+    </select>
+    <br>
+    <button onclick="setCoordinates()">Set Coordinates</button>
+    <button onclick="setManeuver()">Set Maneuver</button>
+    <button onclick="setAbsoluteVector()">Set Absolute Vector</button>
+    <button onclick="moveBodies()">Move</button>
+    <div id="scaleButtons">
+      <button onclick="changeScale()">Change Scale</button>
+      <button onclick="changeMapSize()">Change Map Size</button>
+      <button onclick="deleteSelectedBody()">Delete</button>
+      <button onclick="launchSubBody()">Launch Subbody</button>
+    </div>
+  </div>
+
+  <div id="coordinateField">
+    <h2>Coordinate Field</h2>
+    <canvas id="myCanvas" width="1280" height="720" onclick="selectBody(event)"></canvas>
+  </div>
+
+  <div id="infoField">
+    <h2>Relative Information</h2>
+    <div id="relativeInfo">
+      <div id="relativeInfo1"></div>
+      <div id="relativeInfo2"></div>
+      <div id="relativeInfo3"></div>
+      <div id="relativeInfo4"></div>
+    </div>
+  </div>
+
+  <script>
+    let bodies = [];
+    let fieldSize = 5000; // 5 kilometers in meters
+    let scale = 1; // Initial scale
+    let canvasWidth = 1280; // Initial canvas width
+    let canvasHeight = 720; // Initial canvas height
+    let previousTime = Date.now(); // For calculating delta time
+
+    function createBody() {
+      let bodyId = document.getElementById('bodyId').value;
+      let color = document.getElementById('color').value;
+      bodies.push({ id: bodyId, x: 0, y: 0, vx: 0, vy: 0, color: color });
+      console.log("Body created: ", bodies);
+    }
+
+    function setCoordinates() {
+      let bodyId = document.getElementById('bodyId').value;
+      let xCoord = parseFloat(document.getElementById('xCoord').value);
+      let yCoord = parseFloat(document.getElementById('yCoord').value);
+      let body = bodies.find(b => b.id === bodyId);
+      if (body) {
+        body.x = xCoord;
+        body.y = yCoord;
+        console.log("Coordinates updated for body: ", bodyId);
+      } else {
+        console.error("Body not found: ", bodyId);
+      }
+    }
+
+  function setManeuver() {
+  let bodyId = document.getElementById('bodyId').value;
+  let course = parseFloat(document.getElementById('course').value);
+  let speed = parseFloat(document.getElementById('speed').value);
+  let body = bodies.find(b => b.id === bodyId);
+  if (body) {
+    // Convert course to radians (0 degrees is now upwards)
+    let courseRadians = (90 - course) * Math.PI / 180;
+    let dvx = speed * Math.cos(courseRadians);
+    let dvy = speed * Math.sin(courseRadians);
+    
+    // Add the new vector to the existing one
+    body.vx += dvx;
+    body.vy += dvy;
+
+    console.log("Maneuver set for body: ", bodyId);
+    console.log(`New vector: vx: ${body.vx}, vy: ${body.vy}`);
+  } else {
+    console.error("Body not found: ", bodyId);
+  }
+}
+
+function setAbsoluteVector() {
+  let bodyId = document.getElementById('bodyId').value;
+  let course = parseFloat(document.getElementById('course').value);
+  let speed = parseFloat(document.getElementById('speed').value);
+  let body = bodies.find(b => b.id === bodyId);
+  if (body) {
+    // Convert course to radians (0 degrees is now upwards)
+    let courseRadians = (90 - course) * Math.PI / 180;
+    body.vx = speed * Math.cos(courseRadians);
+    body.vy = speed * Math.sin(courseRadians);
+    console.log("Absolute vector set for body: ", bodyId);
+    console.log(`New vector: vx: ${body.vx}, vy: ${body.vy}`);
+  } else {
+    console.error("Body not found: ", bodyId);
+  }
+}
+
+function launchSubBody() {
+  let parentBodyId = prompt("Enter the ID of the parent body:");
+  let targetBodyId = prompt("Enter the ID of the target body:");
+  let deltaVTotal = parseFloat(prompt("Enter total delta-V:"));
+  let deltaVStep = parseFloat(prompt("Enter delta-V per step:"));
+
+  let parentBody = bodies.find(b => b.id === parentBodyId);
+  let targetBody = bodies.find(b => b.id === targetBodyId);
+
+  if (!parentBody || !targetBody) {
+    console.error("Invalid body IDs provided.");
+    return;
+  }
+
+  let subBodyId = `SB_${parentBodyId}_${Math.floor(Math.random() * 1000)}`;
+  let subBody = {
+    id: subBodyId,
+    x: parentBody.x,
+    y: parentBody.y,
+    vx: 0,
+    vy: 0,
+    color: parentBody.color,
+    deltaVRemaining: deltaVTotal
+  };
+
+  bodies.push(subBody);
+
+  let interval = setInterval(() => {
+    if (subBody.deltaVRemaining <= 0) {
+      console.log(`${subBody.id} missed target ${targetBodyId}.`);
+      alert(`${subBody.id} missed target ${targetBodyId}.`);
+      clearInterval(interval);
+      return;
+    }
+
+    let dx = targetBody.x - subBody.x;
+    let dy = targetBody.y - subBody.y;
+    let distance = Math.sqrt(dx ** 2 + dy ** 2);
+
+    if (distance < 200) {
+      console.log(`${subBody.id} hit target ${targetBodyId}.`);
+      alert(`${subBody.id} hit target ${targetBodyId}.`);
+      clearInterval(interval);
+      deleteBody(subBodyId);
+      return;
+    }
+
+    // Проверка на перелет
+    let nextX = subBody.x + subBody.vx;
+    let nextY = subBody.y + subBody.vy;
+    let nextDx = targetBody.x - nextX;
+    let nextDy = targetBody.y - nextY;
+    let nextDistance = Math.sqrt(nextDx ** 2 + nextDy ** 2);
+
+    if (nextDistance > distance) {
+      console.log(`${subBody.id} hit target ${targetBodyId} due to overshoot.`);
+      alert(`${subBody.id} hit target ${targetBodyId} due to overshoot.`);
+      clearInterval(interval);
+      deleteBody(subBodyId);
+      return;
+    }
+
+    let angleToTarget = Math.atan2(dy, dx); // Угол к цели
+    let relativeVx = subBody.vx - targetBody.vx;
+    let relativeVy = subBody.vy - targetBody.vy;
+
+    // Разделение относительной скорости на продольную и трансверсальную компоненты
+    let radialVelocity = relativeVx * Math.cos(angleToTarget) + relativeVy * Math.sin(angleToTarget);
+    let transverseVelocity = relativeVx * Math.sin(angleToTarget) - relativeVy * Math.cos(angleToTarget);
+
+    // Маневр для гашения трансверсальной скорости
+    let transverseCorrectionX = -transverseVelocity * Math.sin(angleToTarget);
+    let transverseCorrectionY = transverseVelocity * Math.cos(angleToTarget);
+
+    // Добавление коррекции к существующему маневру
+    subBody.vx += deltaVStep * Math.cos(angleToTarget) + transverseCorrectionX;
+    subBody.vy += deltaVStep * Math.sin(angleToTarget) + transverseCorrectionY;
+
+    subBody.deltaVRemaining -= deltaVStep;
+
+    subBody.x += subBody.vx;
+    subBody.y += subBody.vy;
+  }, 1000);
+}
+
+
+    function deleteBody(bodyId) {
+      bodies = bodies.filter(b => b.id !== bodyId);
+      console.log(`Body ${bodyId} deleted.`);
+    }
+
+
+let moveTimeout;
+
+function moveBodies() {
+  const canvas = document.getElementById('myCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw grid
+  drawGrid(ctx, canvasWidth, canvasHeight);
+
+  const currentTime = Date.now();
+  let deltaTime = (currentTime - previousTime) / 1000; // Time in seconds
+  previousTime = currentTime;
+
+  // Cap deltaTime to prevent large jumps
+  const maxDeltaTime = 1.0; // Maximum deltaTime in seconds
+  if (deltaTime > maxDeltaTime) {
+    deltaTime = maxDeltaTime;
+  }
+
+  // Move bodies based on their vectors
+  if (deltaTime >= 1.0) {
+    bodies.forEach(body => {
+      body.x += body.vx * deltaTime;
+      body.y += body.vy * deltaTime;
+    });
+  }
+
+  // Draw bodies and vectors
+  bodies.forEach(body => {
+    // Convert coordinates to pixel values, adjust for coordinate origin
+    let bodyX = canvasWidth / 2 + (body.x / fieldSize) * canvasWidth;
+    let bodyY = canvasHeight / 2 - (body.y / fieldSize) * canvasHeight;
+
+    // Draw the body as a triangle or circle for subbodies
+    ctx.beginPath();
+    if (body.id.startsWith("SB_")) {
+      ctx.arc(bodyX, bodyY, 5, 0, 2 * Math.PI);
+    } else {
+      ctx.moveTo(bodyX, bodyY - 10);
+      ctx.lineTo(bodyX - 10, bodyY + 10);
+      ctx.lineTo(bodyX + 10, bodyY + 10);
+      ctx.closePath();
+    }
+    ctx.fillStyle = body.color;
+    ctx.fill();
+
+    // Draw the vector
+    ctx.beginPath();
+    ctx.moveTo(bodyX, bodyY);
+    let scaleFactor = 0.25; // Adjust this value as needed
+    ctx.lineTo(bodyX + body.vx * (canvasWidth / fieldSize), bodyY - body.vy * (canvasHeight / fieldSize));
+    ctx.strokeStyle = body.color; // Use the body's color for the vector
+    ctx.stroke();
+
+    // Draw the ID above the body
+    ctx.fillStyle = 'white';
+    ctx.font = '14px Exo 2';
+    ctx.fillText(body.id, bodyX - 10, bodyY - 15);
+  });
+
+  updateRelativeInfo();
+
+  // Set a timeout to prevent consecutive "Move" button clicks
+  if (moveTimeout) {
+    clearTimeout(moveTimeout);
+  }
+  moveTimeout = setTimeout(() => {}, 1000); // Wait for 1 second between movements
+}
+
+function deleteSelectedBody() {
+    let selectedBodyId = document.getElementById('bodyId').value;
+    let selectedBody = bodies.find(b => b.id === selectedBodyId);
+    if (selectedBody) {
+      bodies = bodies.filter(b => b.id !== selectedBodyId);
+      moveBodies();
+    }
+  }
+
+  function selectBody(event) {
+  const canvas = document.getElementById('myCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  const clickedBody = bodies.find(body => {
+    let bodyX = canvasWidth / 2 + (body.x / fieldSize) * canvasWidth;
+    let bodyY = canvasHeight / 2 - (body.y / fieldSize) * canvasHeight;
+    return Math.sqrt((x - bodyX) ** 2 + (y - bodyY) ** 2) < 10;
+  });
+
+  if (clickedBody) {
+    document.getElementById('bodyId').value = clickedBody.id;
+    document.getElementById('xCoord').value = clickedBody.x.toFixed(2);
+    document.getElementById('yCoord').value = clickedBody.y.toFixed(2);
+    
+    // Calculate course in degrees, where 0 is up
+    let course = Math.atan2(clickedBody.vx, clickedBody.vy) * 180 / Math.PI;
+    course = (course + 360) % 360; // Convert to clockwise angle from up
+    document.getElementById('course').value = course.toFixed(2);
+    
+    document.getElementById('speed').value = Math.sqrt(clickedBody.vx ** 2 + clickedBody.vy ** 2).toFixed(2);
+    console.log(`Selected body: ${clickedBody.id}`);
+    updateRelativeInfo(); // Update info when a new body is selected
+  }
+  window.postMessage({ type: 'SELECT_BODY', bodyId: clickedBody.id }, '*');
+}
+
+let toggleStates = {}; // Object to store toggle states
+
+      function updateRelativeInfo() {
+      const bodyId = document.getElementById('bodyId').value;
+      const body = bodies.find(b => b.id === bodyId);
+      if (!body) return;
+
+      const infoDiv = document.getElementById('relativeInfo');
+      infoDiv.innerHTML = '';
+
+      bodies.forEach(otherBody => {
+        if (body.id === otherBody.id) return;
+
+        const dx = otherBody.x - body.x;
+        const dy = otherBody.y - body.y;
+        const distance = Math.sqrt(dx ** 2 + dy ** 2);
+        const relativeVx = otherBody.vx - body.vx;
+        const relativeVy = otherBody.vy - body.vy;
+        const relativeSpeed = Math.sqrt(relativeVx ** 2 + relativeVy ** 2);
+        const transverseVelocity = (relativeVx * dy - relativeVy * dx) / (distance || 1);
+        const angularVelocity = transverseVelocity / (distance || 1) * (180 / Math.PI);
+
+        let direction = Math.atan2(dy, dx) * 180 / Math.PI;
+        direction = (90 - direction + 360) % 360; // Convert to clockwise angle from up
+
+        const infoItem = document.createElement('div');
+        infoItem.className = 'relative-info-item';
+
+        const header = document.createElement('div');
+        header.className = 'relative-info-header';
+
+        // Создание строки с телом, расстоянием и действиями
+        header.innerHTML = `
+          <span style="cursor:pointer;color:${otherBody.color};" onclick="document.getElementById('bodyId').value='${otherBody.id}';updateRelativeInfo();">Body ${otherBody.id}</span> - ${distance.toFixed(2)} m 
+          <span style="cursor:pointer;" onclick="sendTargetInfo('${otherBody.id}')">📤</span>
+        `;
+
+        const toggleIcon = document.createElement('span');
+        const isOpen = toggleStates[otherBody.id] || false;
+        toggleIcon.textContent = isOpen ? '▲' : '▼';
+        toggleIcon.style.cursor = 'pointer';
+        toggleIcon.onclick = () => {
+          toggleStates[otherBody.id] = !toggleStates[otherBody.id];
+          updateRelativeInfo(); // Re-render to apply state
+        };
+
+        header.appendChild(toggleIcon);
+
+        const content = document.createElement('div');
+        content.className = 'relative-info-content';
+        content.style.display = isOpen ? 'block' : 'none';
+        content.innerHTML = `
+          <p>Relative Speed: ${relativeSpeed.toFixed(2)} m/s</p>
+          <p>Angular Velocity: ${angularVelocity.toFixed(2)}°/s</p>
+          <p>Direction: ${direction.toFixed(2)}°</p>
+        `;
+
+        infoItem.appendChild(header);
+        infoItem.appendChild(content);
+        infoDiv.appendChild(infoItem);
+      });
+    }
+
+    // Функция для отправки информации о цели
+    function sendTargetInfo(targetId) {
+  if (!Array.isArray(bodies) || bodies.length === 0) {
+    console.error('No bodies data available');
+    return;
+  }
+  const body = bodies.find(b => b.id === document.getElementById('bodyId').value);
+  const target = bodies.find(b => b.id === targetId);
+  if (!body || !target) return;
+
+  const dx = target.x - body.x;
+  const dy = target.y - body.y;
+  const distance = Math.sqrt(dx ** 2 + dy ** 2);
+  const relativeVx = target.vx - body.vx;
+  const relativeVy = target.vy - body.vy;
+  const relativeSpeed = Math.sqrt(relativeVx ** 2 + relativeVy ** 2);
+  const transverseVelocity = (relativeVx * dy - relativeVy * dx) / (distance || 1);
+  const angularVelocity = transverseVelocity / (distance || 1) * (180 / Math.PI);
+
+  let direction = Math.atan2(dy, dx) * 180 / Math.PI;
+  direction = (90 - direction + 360) % 360; // Convert to clockwise angle from up
+
+  const targetInfo = {
+    id: target.id,
+    distance: distance.toFixed(2),
+    relativeSpeed: relativeSpeed.toFixed(2),
+    angularVelocity: angularVelocity.toFixed(2),
+    direction: direction.toFixed(2),
+  };
+
+  console.log('Информация о цели отправлена:', targetInfo);
+  alert(`Информация о цели отправлена:\nID: ${targetInfo.id}\nDistance: ${targetInfo.distance} m\nRelative Speed: ${targetInfo.relativeSpeed} m/s\nAngular Velocity: ${targetInfo.angularVelocity}°/s\nDirection: ${targetInfo.direction}°`);
+
+  fetch('https://script.google.com/macros/s/AKfycbxkj_vtMZj7yVUFZmMMpDyyGGibEUL9EIRMyguVGdEsNN4Acv-sWUtxSEjsFTST31j9/exec', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(targetInfo),
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Ошибка в ответе от сервера: ' + response.status);
+    }
+    return response.text();
+  })
+  .then(data => console.log('Ответ от Apps Script:', data))
+  .catch(error => console.error('Ошибка при отправке данных:', error));
+}
+
+
+    function drawGrid(ctx, canvasWidth, canvasHeight) {
+      ctx.strokeStyle = 'gray';
+      const kmInPixels = (1000 / fieldSize) * canvasWidth; // 1 km in pixels
+      for (let x = 0; x <= canvasWidth; x += kmInPixels) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvasHeight);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= canvasHeight; y += kmInPixels) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvasWidth, y);
+        ctx.stroke();
+      }
+    }
+
+    function changeScale() {
+      let newScale = parseFloat(prompt("Enter new scale:"));
+      scale = newScale;
+      canvasWidth = 1280 * scale;
+      canvasHeight = 720 * scale;
+
+      // Resize the canvas
+      const canvas = document.getElementById('myCanvas');
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+
+      // Redraw the bodies
+      moveBodies();
+    }
+
+    function changeMapSize() {
+      let newSize = parseFloat(prompt("Enter new map size in meters:"));
+      fieldSize = newSize;
+
+      // Redraw the bodies
+      moveBodies();
+    }
+  </script>
+</body>
+</html>
