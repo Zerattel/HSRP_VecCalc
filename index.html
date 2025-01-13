@@ -163,88 +163,34 @@ function setAbsoluteVector() {
 }
 
 function launchSubBody() {
-  let parentBodyId = prompt("Enter the ID of the parent body:");
-  let targetBodyId = prompt("Enter the ID of the target body:");
-  let deltaVTotal = parseFloat(prompt("Enter total delta-V:"));
-  let deltaVStep = parseFloat(prompt("Enter delta-V per step:"));
+  const parentBodyId = prompt("Enter the ID of the parent body:");
+  const targetBodyId = prompt("Enter the ID of the target body:");
+  const deltaVTotal = parseFloat(prompt("Enter total delta-V:"));
+  const deltaVStep = parseFloat(prompt("Enter delta-V per step:"));
 
-  let parentBody = bodies.find(b => b.id === parentBodyId);
-  let targetBody = bodies.find(b => b.id === targetBodyId);
+  const parentBody = bodies.find(b => b.id === parentBodyId);
+  const targetBody = bodies.find(b => b.id === targetBodyId);
 
   if (!parentBody || !targetBody) {
     console.error("Invalid body IDs provided.");
     return;
   }
 
-  let subBodyId = `SB_${parentBodyId}_${Math.floor(Math.random() * 1000)}`;
-  let subBody = {
+  const subBodyId = `SB_${parentBodyId}_${Math.floor(Math.random() * 1000)}`;
+  const subBody = {
     id: subBodyId,
     x: parentBody.x,
     y: parentBody.y,
-    vx: 0,
-    vy: 0,
+    vx: parentBody.vx,
+    vy: parentBody.vy,
     color: parentBody.color,
-    deltaVRemaining: deltaVTotal
+    deltaVRemaining: deltaVTotal,
+    deltaVStep: deltaVStep,
+    targetId: targetBodyId,
+    previousDistance: null, // Для проверки overshoot
   };
 
   bodies.push(subBody);
-
-  let interval = setInterval(() => {
-    if (subBody.deltaVRemaining <= 0) {
-      console.log(`${subBody.id} missed target ${targetBodyId}.`);
-      alert(`${subBody.id} missed target ${targetBodyId}.`);
-      clearInterval(interval);
-      return;
-    }
-
-    let dx = targetBody.x - subBody.x;
-    let dy = targetBody.y - subBody.y;
-    let distance = Math.sqrt(dx ** 2 + dy ** 2);
-
-    if (distance < 200) {
-      console.log(`${subBody.id} hit target ${targetBodyId}.`);
-      alert(`${subBody.id} hit target ${targetBodyId}.`);
-      clearInterval(interval);
-      deleteBody(subBodyId);
-      return;
-    }
-
-    // Проверка на перелет
-    let nextX = subBody.x + subBody.vx;
-    let nextY = subBody.y + subBody.vy;
-    let nextDx = targetBody.x - nextX;
-    let nextDy = targetBody.y - nextY;
-    let nextDistance = Math.sqrt(nextDx ** 2 + nextDy ** 2);
-
-    if (nextDistance > distance) {
-      console.log(`${subBody.id} hit target ${targetBodyId} due to overshoot.`);
-      alert(`${subBody.id} hit target ${targetBodyId} due to overshoot.`);
-      clearInterval(interval);
-      deleteBody(subBodyId);
-      return;
-    }
-
-    let angleToTarget = Math.atan2(dy, dx); // Угол к цели
-    let relativeVx = subBody.vx - targetBody.vx;
-    let relativeVy = subBody.vy - targetBody.vy;
-
-    // Разделение относительной скорости на продольную и трансверсальную компоненты
-    let radialVelocity = relativeVx * Math.cos(angleToTarget) + relativeVy * Math.sin(angleToTarget);
-    let transverseVelocity = relativeVx * Math.sin(angleToTarget) - relativeVy * Math.cos(angleToTarget);
-
-    // Маневр для гашения трансверсальной скорости
-    let transverseCorrectionX = -transverseVelocity * Math.sin(angleToTarget);
-    let transverseCorrectionY = transverseVelocity * Math.cos(angleToTarget);
-
-    // Добавление коррекции к существующему маневру
-    subBody.vx += deltaVStep * Math.cos(angleToTarget) + transverseCorrectionX;
-    subBody.vy += deltaVStep * Math.sin(angleToTarget) + transverseCorrectionY;
-
-    subBody.deltaVRemaining -= deltaVStep;
-
-    subBody.x += subBody.vx;
-    subBody.y += subBody.vy;
-  }, 1000);
 }
 
 
@@ -265,73 +211,169 @@ function moveBodies() {
   drawGrid(ctx, canvasWidth, canvasHeight);
 
   const currentTime = Date.now();
-  let deltaTime = (currentTime - previousTime) / 1000; // Time in seconds
+  const deltaTime = Math.min((currentTime - previousTime) / 1000, 1.0); // Ограничиваем deltaTime
   previousTime = currentTime;
 
-  // Cap deltaTime to prevent large jumps
-  const maxDeltaTime = 1.0; // Maximum deltaTime in seconds
-  if (deltaTime > maxDeltaTime) {
-    deltaTime = maxDeltaTime;
-  }
-
-  // Move bodies based on their vectors
-  if (deltaTime >= 1.0) {
-    bodies.forEach(body => {
-      body.x += body.vx * deltaTime;
-      body.y += body.vy * deltaTime;
-    });
-  }
-
-  // Draw bodies and vectors
+  // Сохраняем предыдущие координаты перед обновлением
   bodies.forEach(body => {
-    // Convert coordinates to pixel values, adjust for coordinate origin
-    let bodyX = canvasWidth / 2 + (body.x / fieldSize) * canvasWidth;
-    let bodyY = canvasHeight / 2 - (body.y / fieldSize) * canvasHeight;
+    body.previousX = body.x;
+    body.previousY = body.y;
+  });
 
-    // Draw the body as a triangle or circle for subbodies
+  bodies.forEach(body => {
+    // Если это субтело, выполняем манёвры
+    if (body.id.startsWith("SB_") && body.deltaVRemaining > 0) {
+      const target = bodies.find(b => b.id === body.targetId);
+      if (target) {
+        const dx = target.x - body.x;
+        const dy = target.y - body.y;
+        const angleToTarget = Math.atan2(dy, dx);
+        const relativeVx = body.vx - target.vx;
+        const relativeVy = body.vy - target.vy;
+
+        // Разделение относительной скорости
+        const transverseVelocity = relativeVx * Math.sin(angleToTarget) - relativeVy * Math.cos(angleToTarget);
+
+        // Расчёт манёвра
+        const transverseCorrectionX = -transverseVelocity * Math.sin(angleToTarget);
+        const transverseCorrectionY = transverseVelocity * Math.cos(angleToTarget);
+        const maneuverVx = body.deltaVStep * Math.cos(angleToTarget) + transverseCorrectionX;
+        const maneuverVy = body.deltaVStep * Math.sin(angleToTarget) + transverseCorrectionY;
+
+        // Применяем манёвр
+        body.vx += maneuverVx;
+        body.vy += maneuverVy;
+        body.deltaVRemaining -= body.deltaVStep;
+
+        console.log(`Subbody ${body.id} performed a maneuver. Remaining delta-V: ${body.deltaVRemaining}`);
+      }
+    }
+
+    // Обновляем координаты тела
+    body.x += body.vx * deltaTime;
+    body.y += body.vy * deltaTime;
+  });
+
+  // Проверка итогов запуска субтел
+  bodies.forEach(body => {
+    if (body.id.startsWith("SB_")) {
+      const target = bodies.find(b => b.id === body.targetId);
+      if (target) {
+        // Проверяем пересечение траекторий
+        if (checkLineIntersection(body, target)) return;
+
+        // Если дельта-V исчерпано, начинаем обратный отсчёт
+        if (body.deltaVRemaining <= 0) {
+          body.despawnCountdown = (body.despawnCountdown || 3) - 1;
+
+          if (body.despawnCountdown <= 0) {
+            alert(`Subbody ${body.id} missed target ${target.id}.`);
+            console.log(`Subbody ${body.id} missed target ${target.id}.`);
+            deleteBody(body.id);
+          }
+        }
+      }
+    }
+  });
+
+  // Отрисовка тел
+  bodies.forEach(body => {
+    const bodyX = canvasWidth / 2 + (body.x / fieldSize) * canvasWidth;
+    const bodyY = canvasHeight / 2 - (body.y / fieldSize) * canvasHeight;
+
     ctx.beginPath();
     if (body.id.startsWith("SB_")) {
-      ctx.arc(bodyX, bodyY, 5, 0, 2 * Math.PI);
+      ctx.arc(bodyX, bodyY, 5, 0, 2 * Math.PI); // Круг для субтел
     } else {
       ctx.moveTo(bodyX, bodyY - 10);
       ctx.lineTo(bodyX - 10, bodyY + 10);
       ctx.lineTo(bodyX + 10, bodyY + 10);
-      ctx.closePath();
+      ctx.closePath(); // Треугольник для обычных тел
     }
     ctx.fillStyle = body.color;
     ctx.fill();
 
-    // Draw the vector
     ctx.beginPath();
     ctx.moveTo(bodyX, bodyY);
-    let scaleFactor = 0.25; // Adjust this value as needed
-    ctx.lineTo(bodyX + body.vx * (canvasWidth / fieldSize), bodyY - body.vy * (canvasHeight / fieldSize));
-    ctx.strokeStyle = body.color; // Use the body's color for the vector
+    ctx.lineTo(
+      bodyX + body.vx * (canvasWidth / fieldSize),
+      bodyY - body.vy * (canvasHeight / fieldSize)
+    );
+    ctx.strokeStyle = body.color;
     ctx.stroke();
 
-    // Draw the ID above the body
     ctx.fillStyle = 'white';
     ctx.font = '14px Exo 2';
     ctx.fillText(body.id, bodyX - 10, bodyY - 15);
   });
 
   updateRelativeInfo();
-
-  // Set a timeout to prevent consecutive "Move" button clicks
-  if (moveTimeout) {
-    clearTimeout(moveTimeout);
-  }
-  moveTimeout = setTimeout(() => {}, 1000); // Wait for 1 second between movements
 }
 
-function deleteSelectedBody() {
-    let selectedBodyId = document.getElementById('bodyId').value;
-    let selectedBody = bodies.find(b => b.id === selectedBodyId);
-    if (selectedBody) {
-      bodies = bodies.filter(b => b.id !== selectedBodyId);
-      moveBodies();
+function getNearestPointOnLine(lineStart, lineEnd, point) {
+  const lineDx = lineEnd.x - lineStart.x;
+  const lineDy = lineEnd.y - lineStart.y;
+
+  const t = ((point.x - lineStart.x) * lineDx + (point.y - lineStart.y) * lineDy) /
+            (lineDx ** 2 + lineDy ** 2);
+
+  // Ограничиваем t в пределах отрезка [0, 1]
+  const clampedT = Math.max(0, Math.min(1, t));
+
+  return {
+    x: lineStart.x + clampedT * lineDx,
+    y: lineStart.y + clampedT * lineDy,
+  };
+}
+
+function checkLineIntersection(subBody, target) {
+  const subBodyStart = { x: subBody.previousX, y: subBody.previousY };
+  const subBodyEnd = { x: subBody.x, y: subBody.y };
+  const targetStart = { x: target.previousX, y: target.previousY };
+  const targetEnd = { x: target.x, y: target.y };
+
+  console.log(`Checking intersection for Subbody ${subBody.id} and Target ${target.id}`);
+  console.log(`Subbody: Start (${subBodyStart.x}, ${subBodyStart.y}), End (${subBodyEnd.x}, ${subBodyEnd.y})`);
+  console.log(`Target: Start (${targetStart.x}, ${targetStart.y}), End (${targetEnd.x}, ${targetEnd.y})`);
+
+  const det = (subBodyEnd.x - subBodyStart.x) * (targetEnd.y - targetStart.y) -
+              (subBodyEnd.y - subBodyStart.y) * (targetEnd.x - targetStart.x);
+
+  if (det === 0) {
+    console.log("Lines are parallel, no intersection.");
+  } else {
+    const lambda = ((targetEnd.y - targetStart.y) * (targetEnd.x - subBodyStart.x) +
+                    (targetStart.x - targetEnd.x) * (targetEnd.y - subBodyStart.y)) / det;
+    const gamma = ((subBodyStart.y - subBodyEnd.y) * (targetEnd.x - subBodyStart.x) +
+                   (subBodyEnd.x - subBodyStart.x) * (targetEnd.y - subBodyStart.y)) / det;
+
+    console.log(`Det: ${det}, Lambda: ${lambda}, Gamma: ${gamma}`);
+
+    if (0 <= lambda && lambda <= 1 && 0 <= gamma && gamma <= 1) {
+      console.log(`Subbody ${subBody.id} intersects with Target ${target.id}.`);
+      alert(`Subbody ${subBody.id} hit target ${target.id}.`);
+      deleteBody(subBody.id);
+      return true;
     }
   }
+
+  // Проверка ближайшей точки на траектории субтела
+  const nearestPoint = getNearestPointOnLine(subBodyStart, subBodyEnd, { x: target.x, y: target.y });
+  const distance = Math.sqrt((nearestPoint.x - target.x) ** 2 + (nearestPoint.y - target.y) ** 2);
+
+  console.log(`Nearest Point: (${nearestPoint.x}, ${nearestPoint.y}), Distance to Target: ${distance}`);
+
+  if (distance <= 200) {
+    console.log(`Subbody ${subBody.id} hit target ${target.id} within radius.`);
+    alert(`Subbody ${subBody.id} hit target ${target.id}.`);
+    deleteBody(subBody.id);
+    return true;
+  }
+
+  console.log("No intersection or radius hit detected.");
+  return false;
+}
+
 
   function selectBody(event) {
   const canvas = document.getElementById('myCanvas');
@@ -470,8 +512,6 @@ let toggleStates = {}; // Object to store toggle states
   .catch(error => console.error('Ошибка при отправке данных:', error));
 
 }
-
-
     function drawGrid(ctx, canvasWidth, canvasHeight) {
       ctx.strokeStyle = 'gray';
       const kmInPixels = (1000 / fieldSize) * canvasWidth; // 1 km in pixels
