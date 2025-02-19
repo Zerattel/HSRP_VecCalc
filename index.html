@@ -25,8 +25,8 @@
   <h1>HSRP Vector Assistant</h1>
 
   <div id="field">
-    <h2>.</h2>
     <button onclick="createBody()">Create Body</button>
+    <button onclick="applyChangesToBody()">Apply</button>
     <br>
     <label for="bodyId">Body ID:</label>
     <input type="text" id="bodyId">
@@ -212,6 +212,24 @@ function setAbsoluteVector() {
     console.log(`New vector: vx: ${body.vx}, vy: ${body.vy}`);
   } else {
     console.error("Body not found: ", bodyId);
+  }
+}
+
+function applyChangesToBody() {
+  let bodyId = document.getElementById('bodyId').value;
+  let selectedBody = bodies.find(b => b.id === bodyId);
+  
+  if (!selectedBody) {
+    alert("No body selected.");
+    return;
+  }
+
+  selectedBody.color = document.getElementById('color').value;
+  selectedBody.sprite = document.getElementById('sprite').value;
+  selectedBody.spriteSize = parseFloat(document.getElementById('spriteSize').value);
+  
+  if (selectedBody.sprite === 'custom') {
+    selectedBody.customSpriteUrl = document.getElementById('customSpriteUrl').value;
   }
 }
 
