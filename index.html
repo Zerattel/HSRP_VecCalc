@@ -67,11 +67,11 @@
       <option value="https://i.imgur.com/cfvoVs3.png">Шаттл</option>
       <option value="https://i.imgur.com/fU6GRcZ.png">Корвет</option>
       <option value="https://i.imgur.com/UBTHFZC.png">Фрегат</option>
-      <option value="https://i.imgur.com/K4dAHbL.png">Индустриальный фрегат</option>
+      <option value="https://i.imgur.com/K4dAHbL.png">Инд. фрегат</option>
       <option value="https://i.imgur.com/w3wcLgj.png">Эсминец</option>
       <option value="https://i.imgur.com/f9BfEM5.png">Буровая баржа</option>
-      <option value="https://i.imgur.com/zz7SG9B.png">Индустриальный флагман</option>
-      <option value="https://i.imgur.com/Uqg0Dvd.png">Индустриальный КАР</option>
+      <option value="https://i.imgur.com/zz7SG9B.png">Инд. флагман</option>
+      <option value="https://i.imgur.com/Uqg0Dvd.png">Инд. КАР</option>
       <option value="https://i.imgur.com/PNxogBn.png">Крейсер</option>
       <option value="https://i.imgur.com/w3wcLgj.png">Линейный крейсер</option>
       <option value="https://i.imgur.com/fwQbLy9.png">Линкор</option>
@@ -80,7 +80,7 @@
       <option value="https://i.imgur.com/YHteNXI.png">Титан</option>
       <option value="https://edassets.org/static/img/missions/assassin.png">Цель</option>
       <option value="https://edassets.org/static/img/power-related/Fortifying.png">Защитить</option>
-      <option value="https://edassets.org/static/img/stations/Asteroid_Station_Icon.png">Астероидстанция</option>
+      <option value="https://edassets.org/static/img/stations/Asteroid_Station_Icon.png">Астерстанция</option>
       <option value="https://edassets.org/static/img/stations/Orbis.png">Станция</option>
       <option value="https://edassets.org/static/img/stations/Outpost.png">Аванпост</option>
       <option value="https://edassets.org/static/img/power-ethos/Covert_border.png">Опасность</option>
@@ -95,7 +95,6 @@
     
     <label for="spriteSize">SS:</label>
     <input type="number" id="spriteSize" value="0.2" min="0.1" step="0.1">
-
     <br>
     <button onclick="setCoordinates()">Set Coordinates</button>
     <button onclick="setManeuver()">Set Maneuver</button>
@@ -597,7 +596,7 @@ let toggleStates = {}; // Object to store toggle states
 
         // Создание строки с телом, расстоянием и действиями
         header.innerHTML = `
-          <span style="cursor:pointer;color:${otherBody.color};" onclick="document.getElementById('bodyId').value='${otherBody.id}';updateRelativeInfo();">Body ${otherBody.id}</span> - ${distance.toFixed(2)} m 
+          <span style="cursor:pointer;color:${otherBody.color};" onclick="document.getElementById('bodyId').value='${otherBody.id}';updateRelativeInfo();">${otherBody.id}</span> - ${distance.toFixed(2)} m 
           <span style="cursor:pointer;" onclick="sendTargetInfo('${otherBody.id}')">📤</span>
         `;
 
