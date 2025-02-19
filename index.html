@@ -367,7 +367,7 @@ function moveBodies() {
           // Отрисовка идентификатора
           ctx.fillStyle = color;
           ctx.font = '14px "Exo 2", sans-serif';
-          let textOffsetY = 20 + (img.height * (size * 0.2));
+          let textOffsetY = -15 + (img.height * (size * 0.75));
           let textWidth = ctx.measureText(body.id).width;
           ctx.fillText(body.id, bodyX - textWidth / 2, bodyY - textOffsetY);
           
