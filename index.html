@@ -43,7 +43,7 @@
     <label for="speed">Speed (m/s):</label>
     <input type="text" id="speed">
     <br>
-    <label for="color">Color:</label>
+    <label for="color">C:</label>
     <select id="color">
       <option value="red">Red</option>
       <option value="blue">Blue</option>
@@ -62,6 +62,40 @@
       <option value="teal">Teal</option>
       <option value="navy">Navy</option>
     </select>
+    <label for="sprite">S:</label>
+    <select id="sprite">
+      <option value="https://i.imgur.com/cfvoVs3.png">Шаттл</option>
+      <option value="https://i.imgur.com/fU6GRcZ.png">Корвет</option>
+      <option value="https://i.imgur.com/UBTHFZC.png">Фрегат</option>
+      <option value="https://i.imgur.com/K4dAHbL.png">Индустриальный фрегат</option>
+      <option value="https://i.imgur.com/w3wcLgj.png">Эсминец</option>
+      <option value="https://i.imgur.com/f9BfEM5.png">Буровая баржа</option>
+      <option value="https://i.imgur.com/zz7SG9B.png">Индустриальный флагман</option>
+      <option value="https://i.imgur.com/Uqg0Dvd.png">Индустриальный КАР</option>
+      <option value="https://i.imgur.com/PNxogBn.png">Крейсер</option>
+      <option value="https://i.imgur.com/w3wcLgj.png">Линейный крейсер</option>
+      <option value="https://i.imgur.com/fwQbLy9.png">Линкор</option>
+      <option value="https://i.imgur.com/mQJoGUE.png">Авианосец</option>
+      <option value="https://i.imgur.com/Ob7kuP1.png">Дредноут</option>
+      <option value="https://i.imgur.com/YHteNXI.png">Титан</option>
+      <option value="https://edassets.org/static/img/missions/assassin.png">Цель</option>
+      <option value="https://edassets.org/static/img/power-related/Fortifying.png">Защитить</option>
+      <option value="https://edassets.org/static/img/stations/Asteroid_Station_Icon.png">Астероидстанция</option>
+      <option value="https://edassets.org/static/img/stations/Orbis.png">Станция</option>
+      <option value="https://edassets.org/static/img/stations/Outpost.png">Аванпост</option>
+      <option value="https://edassets.org/static/img/power-ethos/Covert_border.png">Опасность</option>
+      <option value="https://edassets.org/static/img/missions/mining.png">Астероид</option>
+      <option value="https://edassets.org/static/img/missions/planetary-data-unknown-mission.png">Маяк</option>
+      <option value="https://edassets.org/static/img/missions/unknown-mission.png">Глаз</option>
+      <option value="https://edassets.org/static/img/missions/pirate-timed.png">Сигнал</option>
+      <option value="https://edassets.org/static/img/missions/rescue-mission.png">Остов</option>
+      <option value="custom">Custom URL</option>
+    </select>
+    <input type="text" id="customSpriteUrl" placeholder="Enter sprite URL" style="display:none;">
+    
+    <label for="spriteSize">SS:</label>
+    <input type="number" id="spriteSize" value="0.2" min="0.1" step="0.1">
+
     <br>
     <button onclick="setCoordinates()">Set Coordinates</button>
     <button onclick="setManeuver()">Set Maneuver</button>
@@ -76,6 +110,7 @@
     <div id="saveLoadButtons">
       <button onclick="saveBattlefield()">Save</button>
       <button onclick="loadBattlefield()">Load</button>
+      <button onclick="createZone()">Create Zone</button>
     </div>
   </div>
 
@@ -103,11 +138,25 @@
     let previousTime = Date.now(); // For calculating delta time
 
     function createBody() {
-      let bodyId = document.getElementById('bodyId').value;
-      let color = document.getElementById('color').value;
-      bodies.push({ id: bodyId, x: 0, y: 0, vx: 0, vy: 0, color: color });
-      console.log("Body created: ", bodies);
-    }
+        let bodyId = document.getElementById('bodyId').value;
+        let color = document.getElementById('color').value;
+        let sprite = document.getElementById('sprite').value;
+        let spriteSize = parseFloat(document.getElementById('spriteSize').value);
+        let customSpriteUrl = sprite === 'custom' ? document.getElementById('customSpriteUrl').value : sprite;
+
+        bodies.push({
+          id: bodyId,
+          x: 0,
+          y: 0,
+          vx: 0,
+          vy: 0,
+          color: color,
+          sprite: sprite,
+          spriteSize: spriteSize,
+          customSpriteUrl: customSpriteUrl
+        });
+        console.log("Body created: ", bodies);
+      }
 
     function setCoordinates() {
       let bodyId = document.getElementById('bodyId').value;
@@ -144,6 +193,11 @@
     console.error("Body not found: ", bodyId);
   }
 }
+
+document.getElementById('sprite').addEventListener('change', function() {
+        let customInput = document.getElementById('customSpriteUrl');
+        customInput.style.display = this.value === 'custom' ? 'inline-block' : 'none';
+      });
 
 function setAbsoluteVector() {
   let bodyId = document.getElementById('bodyId').value;
@@ -187,11 +241,13 @@ function launchSubBody() {
     deltaVRemaining: deltaVTotal,
     deltaVStep: deltaVStep,
     targetId: targetBodyId,
+    sprite: "https://edassets.org/static/img/cqc/Flag-hologram.png",
+    spriteSize: 0.025,
     previousDistance: null, // Для проверки overshoot
   };
 
   bodies.push(subBody);
-}
+  }
 
 
     function deleteBody(bodyId) {
@@ -278,37 +334,135 @@ function moveBodies() {
 
   // Отрисовка тел
   bodies.forEach(body => {
-    const bodyX = canvasWidth / 2 + (body.x / fieldSize) * canvasWidth;
-    const bodyY = canvasHeight / 2 - (body.y / fieldSize) * canvasHeight;
+          const bodyX = canvas.width / 2 + (body.x / fieldSize) * canvas.width;
+          const bodyY = canvas.height / 2 - (body.y / fieldSize) * canvas.height;
+          let spriteUrl = body.sprite === 'custom' ? body.customSpriteUrl : body.sprite;
+          let size = body.spriteSize || 1;
+          let angle = Math.atan2(body.vy, body.vx) * 180 / Math.PI;
+          let color = body.color || 'white';
+          
+          // Отрисовка спрайта с окраской без влияния на прозрачность других объектов
+          let img = new Image();
+          img.onload = function() {
+            let bufferCanvas = document.createElement('canvas');
+            let bufferCtx = bufferCanvas.getContext('2d');
+            bufferCanvas.width = img.width;
+            bufferCanvas.height = img.height;
 
-    ctx.beginPath();
-    if (body.id.startsWith("SB_")) {
-      ctx.arc(bodyX, bodyY, 5, 0, 2 * Math.PI); // Круг для субтел
-    } else {
-      ctx.moveTo(bodyX, bodyY - 10);
-      ctx.lineTo(bodyX - 10, bodyY + 10);
-      ctx.lineTo(bodyX + 10, bodyY + 10);
-      ctx.closePath(); // Треугольник для обычных тел
+            bufferCtx.drawImage(img, 0, 0);
+            bufferCtx.globalCompositeOperation = 'source-atop';
+            bufferCtx.fillStyle = color;
+            bufferCtx.fillRect(0, 0, bufferCanvas.width, bufferCanvas.height);
+            bufferCtx.globalCompositeOperation = 'source-over';
+            
+            ctx.save();
+            ctx.translate(bodyX, bodyY);
+            if (body.vx !== 0 || body.vy !== 0) {
+              ctx.rotate((90 - angle) * Math.PI / 180);
+            }
+            ctx.drawImage(bufferCanvas, -img.width * size / 2, -img.height * size / 2, img.width * size, img.height * size);
+            ctx.restore();
+          };
+          img.src = spriteUrl;
+          
+          // Отрисовка идентификатора
+          ctx.fillStyle = color;
+          ctx.font = '14px "Exo 2", sans-serif';
+          let textOffsetY = 20 + (img.height * (size * 0.2));
+          let textWidth = ctx.measureText(body.id).width;
+          ctx.fillText(body.id, bodyX - textWidth / 2, bodyY - textOffsetY);
+          
+          if (body.vx !== 0 || body.vy !== 0) {
+          // Отрисовка вектора движения как стрелки
+          let nextX = body.x + body.vx;
+          let nextY = body.y + body.vy;
+          let vectorEndX = canvas.width / 2 + (nextX / fieldSize) * canvas.width;
+          let vectorEndY = canvas.height / 2 - (nextY / fieldSize) * canvas.height;
+          
+          ctx.beginPath();
+          ctx.globalAlpha = 0.4;
+          ctx.moveTo(bodyX, bodyY);
+          ctx.lineTo(vectorEndX, vectorEndY);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          
+          // Добавление наконечника стрелки
+          let arrowSize = 10;
+          let arrowAngle = Math.atan2(vectorEndY - bodyY, vectorEndX - bodyX);
+          ctx.beginPath();
+          ctx.globalAlpha = 0.4;
+          ctx.moveTo(vectorEndX, vectorEndY);
+          ctx.lineTo(vectorEndX - arrowSize * Math.cos(arrowAngle - Math.PI / 6), vectorEndY - arrowSize * Math.sin(arrowAngle - Math.PI / 6));
+          ctx.lineTo(vectorEndX - arrowSize * Math.cos(arrowAngle + Math.PI / 6), vectorEndY - arrowSize * Math.sin(arrowAngle + Math.PI / 6));
+          ctx.lineTo(vectorEndX, vectorEndY);
+          ctx.fillStyle = color;
+          ctx.fill();
+          
+          // Полупрозрачная поперечная линия и информация о векторе
+          let offset = 50;
+          let normalAngle = arrowAngle + Math.PI / 2;
+          let textX = (bodyX + vectorEndX) / 2 + offset * Math.cos(normalAngle);
+          let textY = (bodyY + vectorEndY) / 2 + offset * Math.sin(normalAngle);
+          
+          ctx.beginPath();
+          ctx.moveTo((bodyX + vectorEndX) / 2, (bodyY + vectorEndY) / 2);
+          ctx.lineTo(textX, textY);
+          ctx.strokeStyle = color;
+          ctx.globalAlpha = 0.3;
+          ctx.stroke();
+          ctx.globalAlpha = 1.0;
+          
+          // Отрисовка информации о векторе
+          ctx.fillStyle = color;
+          ctx.font = '9px "Exo 2", sans-serif';
+          let speed = Math.sqrt(body.vx ** 2 + body.vy ** 2).toFixed(2);
+          ctx.fillText(`V: ${speed} m/s`, textX, textY - 5);
+          ctx.fillText(`C: ${angle.toFixed(2)}°`, textX, textY + 10);
+        }});
+        
+        drawZones(ctx);
+        updateRelativeInfo();
+      }
+
+function drawZones(ctx) {
+      bodies.forEach(body => {
+        let bodyX = ctx.canvas.width / 2 + (body.x / fieldSize) * ctx.canvas.width;
+        let bodyY = ctx.canvas.height / 2 - (body.y / fieldSize) * ctx.canvas.height;
+        
+        if (!body.zones || body.zones.length === 0) return;
+        
+        body.zones.forEach(zone => {
+          let pixelRadius = (zone.radius / fieldSize) * ctx.canvas.width;
+          ctx.beginPath();
+          ctx.arc(bodyX, bodyY, pixelRadius, 0, 2 * Math.PI);
+          ctx.strokeStyle = zone.color;
+          ctx.globalAlpha = 0.25;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        });
+      });
     }
-    ctx.fillStyle = body.color;
-    ctx.fill();
 
-    ctx.beginPath();
-    ctx.moveTo(bodyX, bodyY);
-    ctx.lineTo(
-      bodyX + body.vx * (canvasWidth / fieldSize),
-      bodyY - body.vy * (canvasHeight / fieldSize)
-    );
-    ctx.strokeStyle = body.color;
-    ctx.stroke();
+function createZone() {
+      let bodyId = document.getElementById('bodyId').value;
+      let body = bodies.find(b => b.id === bodyId);
+      if (!body) return alert("Body not found");
+      
+      if (!body.zones) body.zones = [];
+      
+      let zoneId = prompt("Enter zone identifier:");
+      let color = prompt("Enter color (hex or name):");
+      let radius = parseFloat(prompt("Enter radius in meters:"));
+      
+      if (body.zones.some(z => z.id === zoneId)) {
+        body.zones = body.zones.filter(z => z.id !== zoneId);
+      } else {
+        body.zones.push({ id: zoneId, color, radius });
+      }
+    }
 
-    ctx.fillStyle = 'white';
-    ctx.font = '14px Exo 2';
-    ctx.fillText(body.id, bodyX - 10, bodyY - 15);
-  });
-
-  updateRelativeInfo();
-}
 
 function getNearestPointOnLine(lineStart, lineEnd, point) {
   const lineDx = lineEnd.x - lineStart.x;
@@ -375,15 +529,15 @@ function checkLineIntersection(subBody, target) {
 }
 
 
-  function selectBody(event) {
+function selectBody(event) {
   const canvas = document.getElementById('myCanvas');
   const rect = canvas.getBoundingClientRect();
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
 
   const clickedBody = bodies.find(body => {
-    let bodyX = canvasWidth / 2 + (body.x / fieldSize) * canvasWidth;
-    let bodyY = canvasHeight / 2 - (body.y / fieldSize) * canvasHeight;
+    let bodyX = canvas.width / 2 + (body.x / fieldSize) * canvas.width;
+    let bodyY = canvas.height / 2 - (body.y / fieldSize) * canvas.height;
     return Math.sqrt((x - bodyX) ** 2 + (y - bodyY) ** 2) < 10;
   });
 
@@ -392,16 +546,22 @@ function checkLineIntersection(subBody, target) {
     document.getElementById('xCoord').value = clickedBody.x.toFixed(2);
     document.getElementById('yCoord').value = clickedBody.y.toFixed(2);
     
-    // Calculate course in degrees, where 0 is up
     let course = Math.atan2(clickedBody.vx, clickedBody.vy) * 180 / Math.PI;
-    course = (course + 360) % 360; // Convert to clockwise angle from up
+    course = (course + 360) % 360;
     document.getElementById('course').value = course.toFixed(2);
     
     document.getElementById('speed').value = Math.sqrt(clickedBody.vx ** 2 + clickedBody.vy ** 2).toFixed(2);
     console.log(`Selected body: ${clickedBody.id}`);
-    updateRelativeInfo(); // Update info when a new body is selected
+    updateRelativeInfo();
+  } else {
+    // Если тело не найдено, записываем координаты точки
+    let worldX = ((x - canvas.width / 2) / canvas.width) * fieldSize;
+    let worldY = ((canvas.height / 2 - y) / canvas.height) * fieldSize;
+    
+    document.getElementById('xCoord').value = worldX.toFixed(2);
+    document.getElementById('yCoord').value = worldY.toFixed(2);
+    console.log(`No body found. Coordinates set: X=${worldX.toFixed(2)}, Y=${worldY.toFixed(2)}`);
   }
-  window.postMessage({ type: 'SELECT_BODY', bodyId: clickedBody.id }, '*');
 }
 
 let toggleStates = {}; // Object to store toggle states
@@ -512,22 +672,24 @@ let toggleStates = {}; // Object to store toggle states
   .catch(error => console.error('Ошибка при отправке данных:', error));
 
 }
-    function drawGrid(ctx, canvasWidth, canvasHeight) {
-      ctx.strokeStyle = 'gray';
-      const kmInPixels = (1000 / fieldSize) * canvasWidth; // 1 km in pixels
-      for (let x = 0; x <= canvasWidth; x += kmInPixels) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvasHeight);
-        ctx.stroke();
-      }
-      for (let y = 0; y <= canvasHeight; y += kmInPixels) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvasWidth, y);
-        ctx.stroke();
-      }
-    }
+function drawGrid(ctx, canvasWidth, canvasHeight) {
+  ctx.strokeStyle = 'gray';
+  ctx.lineWidth = 1;
+  const step = (canvasWidth / fieldSize) * 1000; // 1 км в игровом мире
+  
+  for (let x = 0; x < canvasWidth; x += step) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvasHeight);
+    ctx.stroke();
+  }
+  for (let y = 0; y < canvasHeight; y += step) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvasWidth, y);
+    ctx.stroke();
+  }
+}
 
     function changeScale() {
       let newScale = parseFloat(prompt("Enter new scale:"));
@@ -545,12 +707,21 @@ let toggleStates = {}; // Object to store toggle states
     }
 
     function changeMapSize() {
-      let newSize = parseFloat(prompt("Enter new map size in meters:"));
-      fieldSize = newSize;
+  let newSize = parseFloat(prompt("Enter new map size in meters:"));
+  if (isNaN(newSize) || newSize <= 0) {
+    alert("Invalid map size.");
+    return;
+  }
 
-      // Redraw the bodies
-      moveBodies();
-    }
+  // Сохраняем координаты в метрах перед изменением fieldSize
+  bodies.forEach(body => {
+    body.x = (body.x / fieldSize) * fieldSize;
+    body.y = (body.y / fieldSize) * fieldSize;
+  });
+
+  fieldSize = newSize;
+  moveBodies(); // Перерисовка
+}
 
     function saveBattlefield() {
   const saveData = {
@@ -602,6 +773,25 @@ function loadBattlefield() {
   };
   input.click();
 }
+
+function deleteSelectedBody() {
+    let bodyId = document.getElementById('bodyId').value;
+    if (!bodyId) {
+        alert("Введите ID тела для удаления.");
+        return;
+    }
+    
+    let bodyIndex = bodies.findIndex(b => b.id === bodyId);
+    if (bodyIndex === -1) {
+        alert("Тело с таким ID не найдено.");
+        return;
+    }
+
+    bodies.splice(bodyIndex, 1);
+    console.log(`Тело ${bodyId} удалено.`);
+    moveBodies(); // Обновляем отрисовку
+}
+
   </script>
 </body>
 </html>
